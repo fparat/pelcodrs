@@ -70,6 +70,15 @@ bitflags! {
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Message([u8; MESSAGE_SIZE]);
 
+bitflags! {
+    pub struct Direction: u8 {
+        const UP = 1;
+        const DOWN = 2;
+        const LEFT = 4;
+        const RIGHT = 8;
+    }
+}
+
 impl Message {
     pub fn new(address: u8, cmd1: Command1, cmd2: Command2, data1: u8, data2: u8) -> Message {
         let mut msg: [u8; MESSAGE_SIZE] =
@@ -82,6 +91,108 @@ impl Message {
 impl AsRef<[u8]> for Message {
     fn as_ref(&self) -> &[u8] {
         &self.0
+    }
+}
+
+impl From<&MessageDraft> for Message {
+    fn from(draft: &MessageDraft) -> Self {
+        Message::new(
+            draft.address,
+            draft.cmd1,
+            draft.cmd2,
+            draft.data1,
+            draft.data2,
+        )
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct MessageDraft {
+    address: u8,
+    cmd1: Command1,
+    cmd2: Command2,
+    data1: u8,
+    data2: u8,
+}
+
+impl MessageDraft {
+    pub fn new(address: u8) -> MessageDraft {
+        MessageDraft {
+            address,
+            cmd1: Command1::empty(),
+            cmd2: Command2::empty(),
+            data1: 0,
+            data2: 0,
+        }
+    }
+
+    pub fn move_normal(&mut self, direction: Direction, speedx: f32, speedy: f32) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn move_turbo(&mut self, direction: Direction) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn up(&mut self, speed: f32) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn down(&mut self, speed: f32) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn left(&mut self, speed: f32) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn right(&mut self, speed: f32) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn stop(&mut self) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn zoom_in(&mut self) -> &mut Self {
+        self.cmd2 |= Command2::ZOOM_TELE;
+        self
+    }
+
+    pub fn zoom_out(&mut self) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn set_camera_on(&mut self) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn set_camera_off(&mut self) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn set_auto_scan(&mut self) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn set_manual_scan(&mut self) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn close_iris(&mut self) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn open_iris(&mut self) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn focus_near(&mut self) -> &mut Self {
+        unimplemented!();
+    }
+
+    pub fn finalize(&self) -> Message {
+        self.into()
     }
 }
 
