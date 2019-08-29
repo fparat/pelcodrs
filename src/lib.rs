@@ -13,7 +13,7 @@ pub struct Error {
 }
 
 impl Error {
-    fn new(kind: ErrorKind, description: &str) -> Error {
+    pub fn new(kind: ErrorKind, description: &str) -> Error {
         Error {
             kind,
             description: String::from(description),
@@ -67,82 +67,21 @@ bitflags! {
     }
 }
 
-bitflags! {
-    struct MessageDraftStatus: u8 {
-        const SYNC = 0b01000000;
-        const ADDR = 0b00100000;
-        const CMD1 = 0b00010000;
-        const CMD2 = 0b00001000;
-        const DAT1 = 0b00000100;
-        const DAT2 = 0b00000010;
-        const CHKS = 0b00000001;
-    }
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct MessageDraft {
-    msg: [u8; MESSAGE_SIZE],
-    status: MessageDraftStatus,
-}
-
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Message([u8; MESSAGE_SIZE]);
 
 impl Message {
-    pub fn new(address: u8) -> MessageDraft {
-        MessageDraft {
-            msg: [SYNC_BYTE, address, 0, 0, 0, 0, 0],
-            status: MessageDraftStatus::SYNC | MessageDraftStatus::ADDR,
-        }
+    pub fn new(address: u8, cmd1: Command1, cmd2: Command2, data1: u8, data2: u8) -> Message {
+        let mut msg: [u8; MESSAGE_SIZE] =
+            [SYNC_BYTE, address, cmd1.bits, cmd2.bits, data1, data2, 0];
+        msg[MESSAGE_SIZE - 1] = checksum(&msg[1..MESSAGE_SIZE]);
+        Message(msg)
     }
 }
 
 impl AsRef<[u8]> for Message {
     fn as_ref(&self) -> &[u8] {
         &self.0
-    }
-}
-
-impl MessageDraft {
-    pub fn with_command1(&mut self, cmd: Command1) -> &mut Self {
-        self.msg[2] = cmd.bits;
-        self.status |= MessageDraftStatus::CMD1;
-        self
-    }
-
-    pub fn with_command2(&mut self, cmd: Command2) -> &mut Self {
-        self.msg[3] = cmd.bits;
-        self.status |= MessageDraftStatus::CMD2;
-        self
-    }
-
-    pub fn with_data1(&mut self, data: u8) -> &mut Self {
-        self.msg[4] = data;
-        self.status |= MessageDraftStatus::DAT1;
-        self
-    }
-
-    pub fn with_data2(&mut self, data: u8) -> &mut Self {
-        self.msg[5] = data;
-        self.status |= MessageDraftStatus::DAT2;
-        self
-    }
-
-    pub fn with_checksum(&mut self) -> &mut Self {
-        self.msg[6] = checksum(&self.msg[1..self.msg.len() - 1]);
-        self.status |= MessageDraftStatus::CHKS;
-        self
-    }
-
-    pub fn finalize(&mut self) -> Result<Message> {
-        if self.with_checksum().status.is_all() {
-            Ok(Message { 0: self.msg })
-        } else {
-            Err(Error::new(
-                ErrorKind::InvalidValue,
-                &format!("Missing message fields: {:?}", self.status),
-            ))
-        }
     }
 }
 
