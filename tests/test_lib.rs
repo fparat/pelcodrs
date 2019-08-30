@@ -1,4 +1,4 @@
-use pelcodrs::{Command1, Command2, Direction, Message, MessageBuilder, Speed};
+use pelcodrs::message::{Command1, Command2, Direction, Message, MessageBuilder, Speed};
 
 #[test]
 fn test_message_new() {
