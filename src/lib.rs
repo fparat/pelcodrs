@@ -42,7 +42,9 @@ type Result<T> = std::result::Result<T, Error>;
 const MESSAGE_SIZE: usize = 7;
 
 const SYNC_BYTE: u8 = 0xFF;
-const TURBO: u8 = 0xFF;
+const SPEED_TURBO_BYTE: u8 = 0xFF;
+const SPEED_MAX_RANGE: f32 = 1.0;
+const SPEED_MIN_RANGE: f32 = 0.0;
 
 bitflags! {
     pub struct Command1: u8 {
@@ -72,11 +74,18 @@ pub struct Message([u8; MESSAGE_SIZE]);
 
 bitflags! {
     pub struct Direction: u8 {
-        const UP = 1;
-        const DOWN = 2;
-        const LEFT = 4;
-        const RIGHT = 8;
+        // the bits are pre-located to the command position so that we can "or"
+        // the bitfield when building the Command2 byte
+        const DOWN  = 0b00010000;
+        const UP    = 0b00001000;
+        const LEFT  = 0b00000100;
+        const RIGHT = 0b00000010;
     }
+}
+
+pub enum Speed {
+    Range(f32),
+    Turbo,
 }
 
 impl Message {
@@ -94,8 +103,8 @@ impl AsRef<[u8]> for Message {
     }
 }
 
-impl From<&MessageDraft> for Message {
-    fn from(draft: &MessageDraft) -> Self {
+impl From<&MessageBuilder> for Message {
+    fn from(draft: &MessageBuilder) -> Self {
         Message::new(
             draft.address,
             draft.cmd1,
@@ -107,7 +116,7 @@ impl From<&MessageDraft> for Message {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub struct MessageDraft {
+pub struct MessageBuilder {
     address: u8,
     cmd1: Command1,
     cmd2: Command2,
@@ -115,9 +124,9 @@ pub struct MessageDraft {
     data2: u8,
 }
 
-impl MessageDraft {
-    pub fn new(address: u8) -> MessageDraft {
-        MessageDraft {
+impl MessageBuilder {
+    pub fn new(address: u8) -> MessageBuilder {
+        MessageBuilder {
             address,
             cmd1: Command1::empty(),
             cmd2: Command2::empty(),
@@ -126,32 +135,47 @@ impl MessageDraft {
         }
     }
 
-    pub fn move_normal(&mut self, direction: Direction, speedx: f32, speedy: f32) -> &mut Self {
-        unimplemented!();
+    pub fn direction(&mut self, direction: Direction) -> &mut Self {
+        self.cmd2 |= Command2::from_bits(direction.bits).unwrap();
+        self
     }
 
-    pub fn move_turbo(&mut self, direction: Direction) -> &mut Self {
-        unimplemented!();
+    pub fn down(&mut self) -> &mut Self {
+        self.direction(Direction::DOWN);
+        self
     }
 
-    pub fn up(&mut self, speed: f32) -> &mut Self {
-        unimplemented!();
+    pub fn up(&mut self) -> &mut Self {
+        self.direction(Direction::UP);
+        self
     }
 
-    pub fn down(&mut self, speed: f32) -> &mut Self {
-        unimplemented!();
+    pub fn left(&mut self) -> &mut Self {
+        self.direction(Direction::LEFT);
+        self
     }
 
-    pub fn left(&mut self, speed: f32) -> &mut Self {
-        unimplemented!();
+    pub fn right(&mut self) -> &mut Self {
+        self.direction(Direction::RIGHT);
+        self
     }
 
-    pub fn right(&mut self, speed: f32) -> &mut Self {
-        unimplemented!();
+    pub fn pan(&mut self, speed: Speed) -> &mut Self {
+        self.data1 = speed_to_byte(speed);
+        self
+    }
+
+    pub fn tilt(&mut self, speed: Speed) -> &mut Self {
+        self.data2 = speed_to_byte(speed);
+        self
     }
 
     pub fn stop(&mut self) -> &mut Self {
-        unimplemented!();
+        self.cmd1 = Command1::empty();
+        self.cmd2 = Command2::empty();
+        self.data1 = 0;
+        self.data2 = 0;
+        self
     }
 
     pub fn zoom_in(&mut self) -> &mut Self {
@@ -160,46 +184,75 @@ impl MessageDraft {
     }
 
     pub fn zoom_out(&mut self) -> &mut Self {
-        unimplemented!();
+        self.cmd2 |= Command2::ZOOM_WIDE;
+        self
     }
 
-    pub fn set_camera_on(&mut self) -> &mut Self {
-        unimplemented!();
+    pub fn camera_on(&mut self) -> &mut Self {
+        self.cmd1 |= Command1::SENSE | Command1::CAMERA_ON_OFF;
+        self
     }
 
-    pub fn set_camera_off(&mut self) -> &mut Self {
-        unimplemented!();
+    pub fn camera_off(&mut self) -> &mut Self {
+        self.cmd1 |= Command1::CAMERA_ON_OFF;
+        self
     }
 
-    pub fn set_auto_scan(&mut self) -> &mut Self {
-        unimplemented!();
+    pub fn auto_scan(&mut self) -> &mut Self {
+        self.cmd1 |= Command1::SENSE | Command1::AUTO_MANUAL_SCAN;
+        self
     }
 
-    pub fn set_manual_scan(&mut self) -> &mut Self {
-        unimplemented!();
+    pub fn manual_scan(&mut self) -> &mut Self {
+        self.cmd1 |= Command1::AUTO_MANUAL_SCAN;
+        self
     }
 
     pub fn close_iris(&mut self) -> &mut Self {
-        unimplemented!();
+        self.cmd1 |= Command1::IRIS_CLOSE;
+        self
     }
 
     pub fn open_iris(&mut self) -> &mut Self {
-        unimplemented!();
+        self.cmd1 |= Command1::IRIS_OPEN;
+        self
+    }
+
+    pub fn focus_far(&mut self) -> &mut Self {
+        self.cmd2 |= Command2::FOCUS_FAR;
+        self
     }
 
     pub fn focus_near(&mut self) -> &mut Self {
-        unimplemented!();
+        self.cmd1 |= Command1::FOCUS_NEAR;
+        self
     }
 
-    pub fn finalize(&self) -> Message {
-        self.into()
+    pub fn finalize(&self) -> Result<Message> {
+        Ok(self.into())
     }
 }
 
-fn checksum(data: &[u8]) -> u8 {
-    dbg!(data);
+pub fn checksum(data: &[u8]) -> u8 {
     let s: u32 = data.iter().map(|&b| u32::from(b)).sum();
     (s & 0xff) as u8
+}
+
+fn speed_to_byte(speed: Speed) -> u8 {
+    match speed {
+        Speed::Range(range) => {
+            let range = if range > SPEED_MAX_RANGE {
+                SPEED_MAX_RANGE
+            } else if range < SPEED_MIN_RANGE {
+                SPEED_MIN_RANGE
+            } else {
+                range
+            };
+
+            (((range / (SPEED_MAX_RANGE - SPEED_MIN_RANGE)) + SPEED_MIN_RANGE) * 63.0).round() as u8
+        }
+        Speed::Turbo => SPEED_TURBO_BYTE,
+    }
 }
 
 #[cfg(test)]
@@ -209,5 +262,13 @@ mod tests {
     #[test]
     fn test_checksum() {
         assert_eq!(0x62, checksum(&[0x0A, 0x88, 0x90, 0x00, 0x40]));
+    }
+
+    #[test]
+    fn test_speed_to_byte() {
+        assert_eq!(0, speed_to_byte(Speed::Range(0.0)));
+        assert_eq!(0x3f, speed_to_byte(Speed::Range(1.0)));
+        assert_eq!(0x26, speed_to_byte(Speed::Range(0.603)));
+        assert_eq!(0xff, speed_to_byte(Speed::Turbo));
     }
 }
