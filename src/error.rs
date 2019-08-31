@@ -1,9 +1,10 @@
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug)]
 pub enum ErrorKind {
     InvalidValue,
+    Io(std::io::Error),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub struct Error {
     kind: ErrorKind,
     description: String,
@@ -31,6 +32,12 @@ impl std::error::Error for Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", &self.description)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::new(ErrorKind::Io(e), "IO error")
     }
 }
 
