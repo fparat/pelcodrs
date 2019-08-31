@@ -39,22 +39,38 @@ bitflags! {
     pub struct Direction: u8 {
         // the bits are pre-located to the command position so that we can "or"
         // the bitfield when building the Command2 byte
-        const DOWN  = 0b00010000;
-        const UP    = 0b00001000;
-        const LEFT  = 0b00000100;
-        const RIGHT = 0b00000010;
+        const DOWN  = 0b0001_0000;
+        const UP    = 0b0000_1000;
+        const LEFT  = 0b0000_0100;
+        const RIGHT = 0b0000_0010;
     }
 }
 
+/// Single command message object type
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Message([u8; MESSAGE_SIZE]);
 
 impl Message {
+    /// New "standard" command message. This constructor cannot be used for
+    /// "extended" commands, for which [Message::from_btyes()] should be used.
     pub fn new(address: u8, cmd1: Command1, cmd2: Command2, data1: u8, data2: u8) -> Message {
-        let mut msg: [u8; MESSAGE_SIZE] =
-            [SYNC_BYTE, address, cmd1.bits, cmd2.bits, data1, data2, 0];
-        msg[MESSAGE_SIZE - 1] = checksum(&msg[1..MESSAGE_SIZE]);
-        Message(msg)
+        let mut msg = Message([SYNC_BYTE, address, cmd1.bits, cmd2.bits, data1, data2, 0]);
+        msg.fill_checksum();
+        msg
+    }
+
+    /// Alternate constructor taking the raw words to insert in the message.
+    /// The sync byte and checksum automatically inserted.
+    pub fn from_bytes(address: u8, words: [u8; 4]) -> Message {
+        let mut msg = Message([
+            SYNC_BYTE, address, words[0], words[1], words[2], words[3], 0,
+        ]);
+        msg.fill_checksum();
+        msg
+    }
+
+    fn fill_checksum(&mut self) {
+        self.0[MESSAGE_SIZE - 1] = checksum(&self.0[1..MESSAGE_SIZE]);
     }
 }
 
@@ -64,8 +80,8 @@ impl AsRef<[u8]> for Message {
     }
 }
 
-impl From<&MessageBuilder> for Message {
-    fn from(draft: &MessageBuilder) -> Self {
+impl From<MessageBuilder> for Message {
+    fn from(draft: MessageBuilder) -> Self {
         Message::new(
             draft.address,
             draft.cmd1,
@@ -76,6 +92,10 @@ impl From<&MessageBuilder> for Message {
     }
 }
 
+/// Builder of standard command messages. Provided methods fill the message
+/// with corresponding bits, then .finalize() produce the final Message.
+/// Please note that currently no logical validation is done. For example the
+/// "sense" bit can be overwritten, and thus invalidate previous method call.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct MessageBuilder {
     address: u8,
@@ -189,7 +209,7 @@ impl MessageBuilder {
         self
     }
 
-    pub fn finalize(&self) -> Result<Message> {
+    pub fn finalize(self) -> Result<Message> {
         Ok(self.into())
     }
 }
