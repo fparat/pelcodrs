@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::error::*;
 
 const MESSAGE_SIZE: usize = 7;
 
@@ -10,6 +10,43 @@ const SPEED_MIN_RANGE: f32 = 0.0;
 pub enum Speed {
     Range(f32),
     Turbo,
+}
+
+pub enum AutoOnOff {
+    Auto = 0,
+    On = 1,
+    Off = 2,
+}
+
+pub enum OnOff {
+    On = 1,
+    Off = 2,
+}
+
+pub enum ShutterSpeed {
+    /// Manual bytes input (byte 5, byte 6)
+    Bytes(u8, u8),
+    /// Spectra II and older
+    DefaultValue,
+    /// Spectra II and older
+    Increment,
+    /// Spectra II and older
+    Decrement,
+    /// Spectra II and older
+    PAL,
+    /// Spectra II and older
+    NTSC,
+    /// Spectra II and older
+    Value(u16),
+    /// Spectra III and newer
+    AutoShutter,
+    /// Spectra III and newer
+    Index(u8),
+}
+
+pub enum LineLockPhaseDelay {
+    New(u16),
+    Delta(i16),
 }
 
 bitflags! {
@@ -52,7 +89,8 @@ pub struct Message([u8; MESSAGE_SIZE]);
 
 impl Message {
     /// New "standard" command message. This constructor cannot be used for
-    /// "extended" commands, for which [Message::from_btyes()] should be used.
+    /// "extended" commands, for which dedicated constructors or
+    /// [Message::from_bytes()] should be used.
     pub fn new(address: u8, cmd1: Command1, cmd2: Command2, data1: u8, data2: u8) -> Message {
         let mut msg = Message([SYNC_BYTE, address, cmd1.bits, cmd2.bits, data1, data2, 0]);
         msg.fill_checksum();
@@ -72,6 +110,179 @@ impl Message {
     fn fill_checksum(&mut self) {
         self.0[MESSAGE_SIZE - 1] = checksum(&self.0[1..MESSAGE_SIZE]);
     }
+
+    // Extended commands constructors
+
+    pub fn set_preset(address: u8, idx: u8) -> Result<Message> {
+        validate_preset_idx(idx)?;
+        Ok(Message::from_bytes(address, [0x00, 0x03, 0x00, idx]))
+    }
+
+    pub fn clear_preset(address: u8, idx: u8) -> Result<Message> {
+        validate_preset_idx(idx)?;
+        Ok(Message::from_bytes(address, [0x00, 0x05, 0x00, idx]))
+    }
+
+    pub fn go_to_preset(address: u8, idx: u8) -> Result<Message> {
+        validate_preset_idx(idx)?;
+        Ok(Message::from_bytes(address, [0x00, 0x07, 0x00, idx]))
+    }
+
+    pub fn flip_180(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x07, 0x00, 0x21]))
+    }
+
+    pub fn go_to_zero_pan(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x07, 0x00, 0x22]))
+    }
+
+    pub fn set_auxiliary(address: u8, idx: u8) -> Result<Message> {
+        if idx >= 0x01 && idx <= 0x08 {
+            Ok(Message::from_bytes(address, [0x00, 0x07, 0x00, 0x22]))
+        } else {
+            Err(arg_error("Invalid auxiliary index"))
+        }
+    }
+
+    pub fn clear_auxiliary(address: u8, idx: u8) -> Result<Message> {
+        if idx >= 0x01 && idx <= 0x08 {
+            Ok(Message::from_bytes(address, [0x00, 0x0B, 0x00, idx]))
+        } else {
+            Err(arg_error("Invalid auxiliary index"))
+        }
+    }
+
+    pub fn remote_reset(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x0F, 0x00, 0x00]))
+    }
+
+    pub fn set_zone_start(address: u8, val: u8) -> Result<Message> {
+        if val >= 0x01 && val <= 0x08 {
+            Ok(Message::from_bytes(address, [0x00, 0x11, 0x00, val]))
+        } else {
+            Err(arg_error("Invalid zone value"))
+        }
+    }
+
+    pub fn set_zone_end(address: u8, val: u8) -> Result<Message> {
+        if val >= 0x01 && val <= 0x08 {
+            Ok(Message::from_bytes(address, [0x00, 0x13, 0x00, val]))
+        } else {
+            Err(arg_error("Invalid zone value"))
+        }
+    }
+
+    pub fn write_char_to_screen(address: u8, pos: u8, character: char) -> Result<Message> {
+        if pos > 0x28 {
+            Err(arg_error("Invalid zone value"))
+        } else if !character.is_ascii() {
+            Err(arg_error("Invalid ASCII character"))
+        } else {
+            let ascii = character as u8;
+            Ok(Message::from_bytes(address, [0x00, 0x15, pos, ascii]))
+        }
+    }
+
+    pub fn clear_screen(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x17, 0x00, 0x00]))
+    }
+
+    pub fn alarm_acknowledge(address: u8, alarm_no: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x19, 0x00, alarm_no]))
+    }
+
+    pub fn zone_scan_on(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x1B, 0x00, 0x00]))
+    }
+
+    pub fn zone_scan_off(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x1D, 0x00, 0x00]))
+    }
+
+    pub fn set_pattern_start(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x1F, 0x00, 0x00]))
+    }
+
+    pub fn set_pattern_stop(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x21, 0x00, 0x00]))
+    }
+
+    pub fn run_pattern(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x23, 0x00, 0x00]))
+    }
+
+    pub fn set_zoom_speed(address: u8, speed: u8) -> Result<Message> {
+        if speed <= 0x03 {
+            Ok(Message::from_bytes(address, [0x00, 0x25, 0x00, speed]))
+        } else {
+            let msg = format!("Invalid speed {}, should be between 0 and 3", speed);
+            Err(arg_error(&msg))
+        }
+    }
+
+    pub fn set_focus_speed(address: u8, speed: u8) -> Result<Message> {
+        if speed <= 0x03 {
+            Ok(Message::from_bytes(address, [0x00, 0x27, 0x00, speed]))
+        } else {
+            let msg = format!("Invalid speed {}, should be between 0 and 3", speed);
+            Err(arg_error(&msg))
+        }
+    }
+
+    pub fn reset_camera_to_defaults(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x29, 0x00, 0x00]))
+    }
+
+    pub fn auto_focus(address: u8, cmd: AutoOnOff) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x2B, 0x00, cmd as u8]))
+    }
+
+    pub fn auto_iris(address: u8, cmd: AutoOnOff) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x2D, 0x00, cmd as u8]))
+    }
+
+    pub fn agc(address: u8, cmd: AutoOnOff) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x2F, 0x00, cmd as u8]))
+    }
+
+    pub fn backlight_compensation(address: u8, cmd: OnOff) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x31, 0x00, cmd as u8]))
+    }
+
+    pub fn auto_white_balance(address: u8, cmd: OnOff) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x33, 0x00, cmd as u8]))
+    }
+
+    pub fn enable_device_phase_delay_mode(address: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x35, 0x00, 0x00]))
+    }
+
+    pub fn set_shutter_speed(address: u8, ctrl: ShutterSpeed) -> Result<Message> {
+        let data: [u8; 2] = match ctrl {
+            ShutterSpeed::Bytes(d1, d2) => [d1, d2],
+            ShutterSpeed::DefaultValue => [0, 0],
+            ShutterSpeed::Increment => [0, 1],
+            ShutterSpeed::Decrement => [0, 2],
+            ShutterSpeed::PAL => [0, 50],
+            ShutterSpeed::NTSC => [0, 60],
+            ShutterSpeed::Value(secs) => secs.to_be_bytes(),
+            ShutterSpeed::AutoShutter => [0, 0],
+            ShutterSpeed::Index(idx) => [0, idx],
+        };
+        Ok(Message::from_bytes(address, [0x00, 0x37, data[0], data[1]]))
+    }
+
+    pub fn adjust_line_lock_phase_delay(address: u8, ctrl: LineLockPhaseDelay) -> Result<Message> {
+        let (cmd, data): (u8, [u8; 2]) = match ctrl {
+            LineLockPhaseDelay::New(value) => (0, value.to_be_bytes()),
+            LineLockPhaseDelay::Delta(value) => (1, value.to_be_bytes()),
+        };
+        Ok(Message::from_bytes(address, [cmd, 0x39, data[0], data[1]]))
+    }
+
+    pub fn adjust_white_balance_rb(address: u8, data1: u8, data2: u8) -> Result<Message> {
+        Ok(Message::from_bytes(address, [0x00, 0x3B, data1, data2]))
+    }
 }
 
 impl AsRef<[u8]> for Message {
@@ -89,6 +300,18 @@ impl From<MessageBuilder> for Message {
             draft.data1,
             draft.data2,
         )
+    }
+}
+
+fn arg_error(description: &str) -> Error {
+    Error::new(ErrorKind::InvalidValue, description)
+}
+
+fn validate_preset_idx(idx: u8) -> Result<()> {
+    if idx >= 0x01 && idx <= 0x20 {
+        Ok(())
+    } else {
+        Err(arg_error("Invalid Present index"))
     }
 }
 
