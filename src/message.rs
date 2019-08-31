@@ -7,22 +7,37 @@ const SPEED_TURBO_BYTE: u8 = 0xFF;
 const SPEED_MAX_RANGE: f32 = 1.0;
 const SPEED_MIN_RANGE: f32 = 0.0;
 
+/// Speed parameter type for pan and tilt moves.
+///
+/// The `Range` value must be between 0.0 and 1.0.
+/// `Turbo` works only for pan movements.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Speed {
     Range(f32),
     Turbo,
 }
 
+/// Argument type for Auto/On/Off
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AutoOnOff {
     Auto = 0,
     On = 1,
     Off = 2,
 }
 
+/// On/Off argument type
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OnOff {
     On = 1,
     Off = 2,
 }
 
+/// Argument type for shutter speed.
+///
+/// Bytes can be manually given to the function using `Bytes`.
+/// Other variants are provided for convenience, but should be used in
+/// accordance to the target device capabilities.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ShutterSpeed {
     /// Manual bytes input (byte 5, byte 6)
     Bytes(u8, u8),
@@ -44,12 +59,15 @@ pub enum ShutterSpeed {
     Index(u8),
 }
 
-pub enum LineLockPhaseDelay {
+/// Argument type for value adjustment functions.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AdjustmentValue {
     New(u16),
     Delta(i16),
 }
 
 bitflags! {
+    /// Bitflag for generating the "command1" word of the message.
     pub struct Command1: u8 {
         const SENSE = 0x80;
         const AUTO_MANUAL_SCAN = 0x10;
@@ -61,6 +79,7 @@ bitflags! {
 }
 
 bitflags! {
+    /// Bitflag for generating the "command2" word of the message.
     pub struct Command2: u8 {
         const FOCUS_FAR = 0x80;
         const ZOOM_WIDE = 0x40;
@@ -73,6 +92,7 @@ bitflags! {
 }
 
 bitflags! {
+    /// Bitflag for direction parameter.
     pub struct Direction: u8 {
         // the bits are pre-located to the command position so that we can "or"
         // the bitfield when building the Command2 byte
@@ -83,14 +103,43 @@ bitflags! {
     }
 }
 
-/// Single command message object type
+/// Single command message object type.
+///
+/// There are several way to build a message:
+///
+///  * The main constructor [Message::new()](struct.Message.html#method.new) for
+///    "standard" messages.
+///
+///  * Use the builder pattern with [MessageBuilder](struct.MessageBuilder.html).
+///
+///  * Many convenient constructors are provided for "extended" commands.
+///
+///  * [Message::from_bytes()](struct.Message.html#method.from_bytes) allows
+///    to manually specify the address and data words bytes.
+///
+///  * The structure can be directly instantiated with an array for full manual.
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub struct Message([u8; MESSAGE_SIZE]);
+pub struct Message(pub [u8; MESSAGE_SIZE]);
 
 impl Message {
     /// New "standard" command message. This constructor cannot be used for
     /// "extended" commands, for which dedicated constructors or
-    /// [Message::from_bytes()] should be used.
+    /// [Message::from_bytes()](struct.Message.html#method.from_bytes) should
+    /// be used.
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// # use pelcodrs::message::*;
+    /// let msg = Message::new(
+    ///     10,
+    ///     Command1::SENSE | Command1::CAMERA_ON_OFF,
+    ///     Command2::FOCUS_FAR | Command2::DOWN,
+    ///     0x00,
+    ///     0x40,
+    /// );
+    /// assert_eq!(&[0xFF, 0x0A, 0x88, 0x90, 0x00, 0x40, 0x62], msg.as_ref());
+    /// ```
     pub fn new(address: u8, cmd1: Command1, cmd2: Command2, data1: u8, data2: u8) -> Message {
         let mut msg = Message([SYNC_BYTE, address, cmd1.bits, cmd2.bits, data1, data2, 0]);
         msg.fill_checksum();
@@ -272,16 +321,43 @@ impl Message {
         Ok(Message::from_bytes(address, [0x00, 0x37, data[0], data[1]]))
     }
 
-    pub fn adjust_line_lock_phase_delay(address: u8, ctrl: LineLockPhaseDelay) -> Result<Message> {
+    fn adjust(address: u8, opcode: u8, ctrl: AdjustmentValue) -> Result<Message> {
         let (cmd, data): (u8, [u8; 2]) = match ctrl {
-            LineLockPhaseDelay::New(value) => (0, value.to_be_bytes()),
-            LineLockPhaseDelay::Delta(value) => (1, value.to_be_bytes()),
+            AdjustmentValue::New(value) => (0, value.to_be_bytes()),
+            AdjustmentValue::Delta(value) => (1, value.to_be_bytes()),
         };
-        Ok(Message::from_bytes(address, [cmd, 0x39, data[0], data[1]]))
+        Ok(Message::from_bytes(
+            address,
+            [cmd, opcode, data[0], data[1]],
+        ))
     }
 
-    pub fn adjust_white_balance_rb(address: u8, data1: u8, data2: u8) -> Result<Message> {
-        Ok(Message::from_bytes(address, [0x00, 0x3B, data1, data2]))
+    pub fn adjust_line_lock_phase_delay(address: u8, ctrl: AdjustmentValue) -> Result<Message> {
+        Message::adjust(address, 0x39, ctrl)
+    }
+
+    pub fn adjust_white_balance_rb(address: u8, ctrl: AdjustmentValue) -> Result<Message> {
+        Message::adjust(address, 0x3B, ctrl)
+    }
+
+    pub fn adjust_white_balance_mg(address: u8, ctrl: AdjustmentValue) -> Result<Message> {
+        Message::adjust(address, 0x3D, ctrl)
+    }
+
+    pub fn adjust_gain(address: u8, ctrl: AdjustmentValue) -> Result<Message> {
+        Message::adjust(address, 0x3F, ctrl)
+    }
+
+    pub fn adjust_auto_iris_level(address: u8, ctrl: AdjustmentValue) -> Result<Message> {
+        Message::adjust(address, 0x41, ctrl)
+    }
+
+    pub fn adjust_auto_iris_peak(address: u8, ctrl: AdjustmentValue) -> Result<Message> {
+        Message::adjust(address, 0x43, ctrl)
+    }
+
+    pub fn query() -> Result<Message> {
+        Ok(Message::from_bytes(0, [0x00, 0x45, 0x00, 0x00]))
     }
 }
 
@@ -315,10 +391,33 @@ fn validate_preset_idx(idx: u8) -> Result<()> {
     }
 }
 
-/// Builder of standard command messages. Provided methods fill the message
-/// with corresponding bits, then .finalize() produce the final Message.
+/// Builder of [Message](struct.Message.html) (standard) instances.
+///
+/// Provided methods fill the message with corresponding bits, then
+/// [MessageBuilder::finalize()](struct.MessageBuilder.html#method.finalize)
+/// produces the final Message.
+///
 /// Please note that currently no logical validation is done. For example the
 /// "sense" bit can be overwritten, and thus invalidate previous method call.
+///
+/// # Example
+///
+/// ```rust
+/// # use pelcodrs::message::*;
+/// # use pelcodrs::*;
+/// # fn example() -> Result<()> {
+/// let msg = MessageBuilder::new(10)
+///     .camera_on()
+///     .focus_far()
+///     .direction(Direction::DOWN)
+///     .tilt(Speed::Range(0.5))
+///     .finalize()?;
+///
+/// assert_eq!(&[0xFF, 0x0A, 0x88, 0x90, 0x00, 0x20, 0x42], msg.as_ref());
+/// # Ok(())}
+/// # example().expect("Could not finalize message");
+///
+/// ```
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct MessageBuilder {
     address: u8,
