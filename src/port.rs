@@ -3,11 +3,14 @@ use std::io::{Read, Write};
 use crate::message::*;
 use crate::Result;
 
-/// Super trait Read + Write, required for using [PelcoDPort].
-pub trait PelcoDSerial: Read + Write {}
-
 /// Interface for communicating with a device using Pelco D protocol.
 pub struct PelcoDPort<T: Read + Write>(T);
+
+impl<T: Read + Write> PelcoDPort<T> {
+    pub fn new(ser: T) -> PelcoDPort<T> {
+        PelcoDPort(ser)
+    }
+}
 
 impl<T: Read + Write> Read for PelcoDPort<T> {
     fn read(&mut self, buf: &mut [u8]) -> std::result::Result<usize, std::io::Error> {
