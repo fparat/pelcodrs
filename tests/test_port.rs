@@ -2,7 +2,9 @@ use std::io::{Read, Write};
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 
+use pelcodrs::message::Message;
 use pelcodrs::port::*;
+use std::convert::TryFrom;
 
 struct FakeDevice {
     tx: Sender<u8>,
@@ -67,4 +69,11 @@ fn test_create_port_and_stub_and_write_and_read() {
 }
 
 #[test]
-fn test_send_message_with_port() {}
+fn test_send_message_with_port() {
+    let (mut pelcoport, stubdev) = new_stub_port_and_device();
+
+    let msg = Message([1, 2, 3, 4, 5, 6, 7]);
+    pelcoport.send_message(msg).expect("Failed sending message");
+    let received = stubdev.received();
+    assert_eq!(msg, Message::try_from(&received[..]).unwrap());
+}

@@ -1,4 +1,5 @@
 use crate::error::*;
+use std::convert::TryFrom;
 
 const MESSAGE_SIZE: usize = 7;
 
@@ -426,6 +427,20 @@ impl From<MessageBuilder> for Message {
             draft.data1,
             draft.data2,
         )
+    }
+}
+
+impl TryFrom<&[u8]> for Message {
+    type Error = &'static str;
+
+    fn try_from(value: &[u8]) -> std::result::Result<Self, Self::Error> {
+        if value.len() == MESSAGE_SIZE {
+            let mut msg = [0u8; MESSAGE_SIZE];
+            msg.copy_from_slice(value);
+            Ok(Message(msg))
+        } else {
+            Err("The slice must contain exactly 7 bytes")
+        }
     }
 }
 
