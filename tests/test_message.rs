@@ -1,4 +1,5 @@
 use pelcodrs::message::*;
+use std::convert::TryFrom;
 
 #[test]
 fn test_message_new() {
@@ -10,6 +11,21 @@ fn test_message_new() {
         0x40,
     );
     assert_eq!(&[0xFF, 0x0A, 0x88, 0x90, 0x00, 0x40, 0x62], msg.as_ref());
+}
+
+#[test]
+fn test_new_message_with_try_from() {
+    let bytes = [11, 22, 33, 44, 55, 66, 77];
+    let msg = Message::try_from(&bytes[..]).expect("Failed creating Message from bytes array");
+    assert_eq!(&bytes, msg.as_ref());
+
+    let few_bytes = [11, 22, 33, 44, 55, 66];
+    let _ = Message::try_from(&few_bytes[..])
+        .expect_err("Message instantiation with too few bytes should fail");
+
+    let many_bytes = [11, 22, 33, 44, 55, 66, 77, 88];
+    let _ = Message::try_from(&many_bytes[..])
+        .expect_err("Message instantiation with too many bytes should fail");
 }
 
 #[test]
