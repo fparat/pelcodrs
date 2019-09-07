@@ -10,12 +10,3 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 bitflags = "1.1.0"
-
-[dependencies.serialport]
-version = "3.3.0"
-default-features = false
-
-[dev-dependencies]
-cargo-readme = "3.1.2"
-
-
