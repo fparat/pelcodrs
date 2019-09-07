@@ -418,6 +418,12 @@ impl AsRef<[u8]> for Message {
     }
 }
 
+impl From<[u8; MESSAGE_SIZE]> for Message {
+    fn from(array: [u8; MESSAGE_SIZE]) -> Self {
+        Message(array)
+    }
+}
+
 impl From<MessageBuilder> for Message {
     fn from(draft: MessageBuilder) -> Self {
         Message::new(

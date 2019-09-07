@@ -14,9 +14,16 @@ fn test_message_new() {
 }
 
 #[test]
+fn test_new_message_from_array() {
+    let bytes: [u8; 7] = [11, 22, 33, 44, 55, 66, 77];
+    let msg = Message::from(bytes);
+    assert_eq!(&bytes, msg.as_ref());
+}
+
+#[test]
 fn test_new_message_with_try_from() {
     let bytes = [11, 22, 33, 44, 55, 66, 77];
-    let msg = Message::try_from(&bytes[..]).expect("Failed creating Message from bytes array");
+    let msg = Message::try_from(&bytes[..]).expect("Failed creating Message from bytes slice");
     assert_eq!(&bytes, msg.as_ref());
 
     let few_bytes = [11, 22, 33, 44, 55, 66];
