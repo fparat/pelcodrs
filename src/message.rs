@@ -136,11 +136,14 @@ bitflags! {
 ///  * Many convenient constructors are provided for "extended" commands.
 ///
 ///  * [Message::from_bytes()](struct.Message.html#method.from_bytes) allows
-///    to manually specify the address and data words bytes.
+///    to manually specify the address and data words bytes, and will
+///    automatically fill the sync byte and checksum.
 ///
-///  * The structure can be directly instantiated with an array for full manual.
+///  * Full control of all the bytes values is possible with the trait
+///    implementaion
+///    [From<[u8;7]>](struct.Message.html#impl-From%3C%5Bu8%3B%207%5D%3E).
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub struct Message(pub [u8; MESSAGE_SIZE]);
+pub struct Message([u8; MESSAGE_SIZE]);
 
 impl Message {
     /// New "standard" command message. This constructor cannot be used for
@@ -419,6 +422,13 @@ impl AsRef<[u8]> for Message {
 }
 
 impl From<[u8; MESSAGE_SIZE]> for Message {
+    /// Create a Message by specifying all the bytes manually:
+    ///
+    /// ```rust
+    /// # use pelcodrs::message::Message;
+    /// let msg = Message::from([11, 22, 33, 44, 55, 66, 77]);
+    /// assert_eq!(&[11, 22, 33, 44, 55, 66, 77], msg.as_ref());
+    /// ```
     fn from(array: [u8; MESSAGE_SIZE]) -> Self {
         Message(array)
     }

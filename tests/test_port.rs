@@ -72,7 +72,7 @@ fn test_create_port_and_stub_and_write_and_read() {
 fn test_send_message_with_port() {
     let (mut pelcoport, stubdev) = new_stub_port_and_device();
 
-    let msg = Message([1, 2, 3, 4, 5, 6, 7]);
+    let msg = Message::from([1, 2, 3, 4, 5, 6, 7]);
     pelcoport.send_message(msg).expect("Failed sending message");
     let received = stubdev.received();
     assert_eq!(msg, Message::try_from(&received[..]).unwrap());
