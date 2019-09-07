@@ -5,6 +5,9 @@
 The Pelco D protocol is widely used for controlling PTZ cameras, especially
 in the CCTV industry.
 
+[Crates.io](https://crates.io/crates/pelcodrs)
+[Documentation](https://docs.rs/pelcodrs)
+
 ## Simple usage
 
 Add this in your application `Cargo.toml`:
@@ -14,18 +17,17 @@ Add this in your application `Cargo.toml`:
 pelcodrs = "0.2.0"
 ```
 
-Create messages object to send to the device.
+Create message objects to send to the device:
 
 ```rust
-use pelcodrs::**;
+use pelcodrs::*;
 
 let msg = MessageBuilder::new(10)
     .camera_on()
     .focus_far()
     .down()
     .tilt(Speed::Range(0.5))
-    .finalize()
-    .unwrap();
+    .finalize()?;
 
 assert_eq!(&[0xFF, 0x0A, 0x88, 0x90, 0x00, 0x20, 0x42], msg.as_ref());
 ```
@@ -34,15 +36,12 @@ A port object can be used with any `Read + Write` object for communicating with
 the target device. For example, a `SerialPort` object from the crate
 [serialport](https://crates.io/crates/serialport) can be used as port:
 
-```rust, ignore
+```rust
 use serialport;
-use pelcodrs::{PelcoDPort, Message};
+use pelcodrs::*;
 
-# use std::error::Error;
-# fn example() -> Result<(), Box<dyn Error>> {
-let pelcod_dev = PelcoDPort::new(serialport::open("/dev/ttyS0"));
-pelcod_dev.send_message(Message::flip_180(10)?)?;
-# Ok(())}
+let dev = PelcoDPort::new(serialport::open("/dev/ttyS0"));
+dev.send_message(Message::flip_180(10)?)?;
 ```
 
 
