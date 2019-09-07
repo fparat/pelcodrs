@@ -4,6 +4,23 @@ use crate::message::*;
 use crate::Result;
 
 /// Interface for communicating with a device using Pelco D protocol.
+///
+/// This structure encapsulates a `Read + Write` object, and uses it for
+/// communicating with the target Pelco D device.
+///
+/// For example, a `SerialPort` object from the crate
+/// [serialport](https://crates.io/crates/serialport) can be used as port:
+///
+/// ```rust, ignore
+/// use serialport;
+/// use pelcodrs::{PelcoDPort, Message};
+///
+/// # use std::error::Error;
+/// # fn example() -> Result<(), Box<dyn Error>> {
+/// let pelcod_dev = PelcoDPort::new(serialport::open("/dev/ttyS0"));
+/// pelcod_dev.send_message(Message::flip_180(10)?)?;
+/// # Ok(())}
+/// ```
 pub struct PelcoDPort<T: Read + Write>(T);
 
 impl<T: Read + Write> PelcoDPort<T> {

@@ -1,10 +1,14 @@
 [package]
 name = "pelcodrs"
+description="A library for handling the Pelco D protocol."
 version = "0.1.0"
 authors = ["Franck Parat <franck.parat@gmail.com>"]
 edition = "2018"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/fparat/pelcodrs"
+keywords = ["pelco", "camera", "protocol"]
+categories = ["embedded", "hardware-support"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

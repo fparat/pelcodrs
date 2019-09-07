@@ -1,9 +1,14 @@
+/// Possible types of error.
 #[derive(Debug)]
 pub enum ErrorKind {
+    /// Invalid parameter.
     InvalidValue,
+
+    /// IO error
     Io(std::io::Error),
 }
 
+/// Error type for the crate.
 #[derive(Debug)]
 pub struct Error {
     kind: ErrorKind,
@@ -41,4 +46,5 @@ impl From<std::io::Error> for Error {
     }
 }
 
+/// Result type used in the crate.
 pub type Result<T> = std::result::Result<T, Error>;

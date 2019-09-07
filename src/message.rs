@@ -142,6 +142,11 @@ bitflags! {
 ///  * Full control of all the bytes values is possible with the trait
 ///    implementaion
 ///    [From<[u8;7]>](struct.Message.html#impl-From%3C%5Bu8%3B%207%5D%3E).
+///
+/// The bytes of a `Message` can be accessed with `Message::as_ref()`.
+/// 
+/// `Message` objects can also be sent to the target device with
+/// [PelcoDPort::send_message()](struct.PelcoDPort.html#method.send_message).
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Message([u8; MESSAGE_SIZE]);
 

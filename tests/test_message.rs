@@ -8,9 +8,19 @@ fn test_message_new() {
         Command1::SENSE | Command1::CAMERA_ON_OFF,
         Command2::FOCUS_FAR | Command2::DOWN,
         0x00,
-        0x40,
+        0x20,
     );
-    assert_eq!(&[0xFF, 0x0A, 0x88, 0x90, 0x00, 0x40, 0x62], msg.as_ref());
+    assert_eq!(&[0xFF, 0x0A, 0x88, 0x90, 0x00, 0x20, 0x42], msg.as_ref());
+
+    let msg2 = MessageBuilder::new(10)
+        .camera_on()
+        .focus_far()
+        .down()
+        .tilt(Speed::Range(0.5))
+        .finalize()
+        .unwrap();
+
+    assert_eq!(msg,msg2);
 }
 
 #[test]
