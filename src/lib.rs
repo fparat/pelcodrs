@@ -1,8 +1,10 @@
 #[macro_use]
 extern crate bitflags;
 
-pub use error::{Error, Result};
+pub use error::*;
+pub use message::*;
+pub use port::*;
 
 mod error;
-pub mod message;
-pub mod port;
+mod message;
+mod port;

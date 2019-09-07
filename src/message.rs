@@ -154,7 +154,7 @@ impl Message {
     /// Example:
     ///
     /// ```
-    /// # use pelcodrs::message::*;
+    /// # use pelcodrs::*;
     /// let msg = Message::new(
     ///     10,
     ///     Command1::SENSE | Command1::CAMERA_ON_OFF,
@@ -425,7 +425,7 @@ impl From<[u8; MESSAGE_SIZE]> for Message {
     /// Create a Message by specifying all the bytes manually:
     ///
     /// ```rust
-    /// # use pelcodrs::message::Message;
+    /// # use pelcodrs::Message;
     /// let msg = Message::from([11, 22, 33, 44, 55, 66, 77]);
     /// assert_eq!(&[11, 22, 33, 44, 55, 66, 77], msg.as_ref());
     /// ```
@@ -484,7 +484,7 @@ fn validate_preset_id(idx: u8) -> Result<()> {
 /// # Example
 ///
 /// ```rust
-/// # use pelcodrs::message::*;
+/// # use pelcodrs::*;
 /// # use pelcodrs::*;
 /// # fn example() -> Result<()> {
 /// let msg = MessageBuilder::new(10)

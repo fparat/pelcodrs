@@ -1,4 +1,4 @@
-use pelcodrs::message::*;
+use pelcodrs::*;
 use std::convert::TryFrom;
 
 #[test]

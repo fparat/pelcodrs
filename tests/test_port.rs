@@ -2,8 +2,7 @@ use std::io::{Read, Write};
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 
-use pelcodrs::message::Message;
-use pelcodrs::port::*;
+use pelcodrs::*;
 use std::convert::TryFrom;
 
 struct FakeDevice {
