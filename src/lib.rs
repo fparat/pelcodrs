@@ -6,7 +6,6 @@
 //!   to the device.
 //!
 
-
 #[macro_use]
 extern crate bitflags;
 

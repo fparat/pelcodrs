@@ -20,7 +20,7 @@ fn test_message_new() {
         .finalize()
         .unwrap();
 
-    assert_eq!(msg,msg2);
+    assert_eq!(msg, msg2);
 }
 
 #[test]
