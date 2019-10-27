@@ -21,6 +21,7 @@ use crate::Result;
 /// pelcod_dev.send_message(Message::flip_180(10)?)?;
 /// # Ok(())}
 /// ```
+#[derive(Debug)]
 pub struct PelcoDPort<T: Read + Write>(T);
 
 impl<T: Read + Write> PelcoDPort<T> {
