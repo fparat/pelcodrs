@@ -1,12 +1,14 @@
 # pelcodrs
 
+[![crates.io version badge](https://img.shields.io/crates/v/pelcodrs.svg)](https://crates.io/crates/pelcodrs)
+[![Documentation](https://docs.rs/pelcodrs/badge.svg)](https://docs.rs/pelcodrs)
+![License](https://img.shields.io/crates/l/pelcodrs)
+![CI](https://github.com/fparat/pelcodrs/workflows/Rust/badge.svg)
+
 `pelcodrs` is a Rust library for communications using the Pelco D protocol.
 
 The Pelco D protocol is widely used for controlling PTZ cameras, especially
 in the CCTV industry.
-
-[Crates.io](https://crates.io/crates/pelcodrs)
-[Documentation](https://docs.rs/pelcodrs)
 
 ## Simple usage
 
