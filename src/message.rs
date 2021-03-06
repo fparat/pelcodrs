@@ -257,7 +257,7 @@ impl Message {
             let ascii = character as u8;
             Ok(Message::from_bytes(address, [0x00, 0x15, column, ascii]))
         } else {
-            Err(arg_error("Invalid ASCII character"))
+            Err(Error::invalid_value("Invalid ASCII character"))
         }
     }
 
@@ -373,6 +373,7 @@ impl Message {
         Ok(Message::from_bytes(address, [0x00, 0x37, data[0], data[1]]))
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn adjust(address: u8, opcode: u8, ctrl: AdjustmentValue) -> Result<Message> {
         let (cmd, data): (u8, [u8; 2]) = match ctrl {
             AdjustmentValue::New(value) => (0, value.to_be_bytes()),
@@ -465,15 +466,11 @@ impl TryFrom<&[u8]> for Message {
     }
 }
 
-fn arg_error(description: &str) -> Error {
-    Error::new(ErrorKind::InvalidValue, description)
-}
-
 fn validate_preset_id(idx: u8) -> Result<()> {
     if idx != 0x00 {
         Ok(())
     } else {
-        Err(arg_error("Invalid Present ID"))
+        Err(Error::invalid_value("Invalid Present ID"))
     }
 }
 
