@@ -12,7 +12,15 @@ extern crate bitflags;
 pub use error::*;
 pub use message::*;
 pub use port::*;
+pub use response::*;
 
 mod error;
 mod message;
 mod port;
+mod response;
+
+/// Checksum algorithm used by Pelco D.
+pub fn checksum(data: &[u8]) -> u8 {
+    let s: u32 = data.iter().map(|&b| u32::from(b)).sum();
+    (s & 0xff) as u8
+}

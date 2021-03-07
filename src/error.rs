@@ -37,5 +37,12 @@ impl From<std::io::Error> for Error {
     }
 }
 
+impl From<std::array::TryFromSliceError> for Error {
+    fn from(e: std::array::TryFromSliceError) -> Self {
+        let msg = format!("Invalid slice length: {}", e);
+        Error::InvalidValue(msg)
+    }
+}
+
 /// Result type used in the crate.
 pub type Result<T> = std::result::Result<T, Error>;

@@ -1,6 +1,8 @@
 use crate::error::*;
 use std::convert::TryFrom;
 
+use crate::checksum;
+
 const MESSAGE_SIZE: usize = 7;
 
 const SYNC_BYTE: u8 = 0xFF;
@@ -617,12 +619,6 @@ impl MessageBuilder {
     pub fn finalize(self) -> Result<Message> {
         Ok(self.into())
     }
-}
-
-/// Checksum algorithm used by Pelco D.
-pub fn checksum(data: &[u8]) -> u8 {
-    let s: u32 = data.iter().map(|&b| u32::from(b)).sum();
-    (s & 0xff) as u8
 }
 
 fn speed_to_byte(speed: Speed) -> u8 {
